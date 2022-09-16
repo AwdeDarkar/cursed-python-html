@@ -72,7 +72,6 @@ class Parser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tags """
-        print(f"Start tag: {tag}")
         element = ET.Element(tag)
         for attr in attrs:
             element.set(attr[0], attr[1])
@@ -80,7 +79,6 @@ class Parser(HTMLParser):
     
     def handle_endtag(self, tag):
         """ Handle end tags """
-        print(f"End tag: {tag}")
         try:
             element = self.stack.pop()
         except IndexError:
@@ -166,11 +164,11 @@ class ErrorHijacker:
             if self.CHARACTER_MAP.keys() & line and grab_pattern.search(line):
                 content = line[line.find("\U00001438"):]
                 html_content = map_string(content, self.CHARACTER_MAP)
-                print(f"HTML Content: {html_content}")
+                evaluated_content = self._eval_expressions(html_content)
                 if parser is None:
                     prechars = line[:line.find("\U00001438")]
                     parser = Parser()
-                parser.feed(html_content)
+                parser.feed(evaluated_content)
             if parser is None:
                 yield line
             elif parser.complete:
@@ -178,6 +176,20 @@ class ErrorHijacker:
                 parser = None
                 prechars = ""
     
+    def _eval_expressions(self, line):
+        """
+        Evaluates expressions in a line of code in the current
+        namespace
+
+        Expressions are marked with an open parenthesis, then a python
+        expression that evaluates to a string or value, then a close parenthesis
+        and a comma.
+
+        Example: `(1 + 1),`
+        """
+        pattern = re.compile(r"\((.+?)\),")
+        return pattern.sub(lambda m: str(eval(m.group(1))), line)
+
     def _build_code(self, element_tree):
         """
         Builds a string of python code from an element tree
@@ -213,7 +225,8 @@ class HTMLBuilder:
 handler = ErrorHijacker(sys.excepthook)
 sys.excepthook = handler
 
+g = "Test string!"
 k = ᐸdivᐳ
-ㅤㅤㅤㅤㅤᐸpᐳSomeㅤTextᐸ𐤕pᐳ
+ㅤㅤㅤㅤㅤᐸpᐳSomeㅤ(2 + 2),ㅤTextㅤandㅤgㅤisㅤ(g),ᐸ𐤕pᐳ
 ᐸ𐤕divᐳ
 print(f"k val: \"{k}\"")
