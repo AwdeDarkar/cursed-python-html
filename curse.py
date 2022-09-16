@@ -57,6 +57,55 @@ def map_string(string, dict):
     """
     return "".join(dict.get(c, c) for c in string)
 
+class Parser(HTMLParser):
+    """ Build an HTML Parse Tree """
+
+    def __init__(self):
+        super().__init__()
+        self.tree = ET.Element("document")
+        self.stack = []
+    
+    @property
+    def complete(self):
+        """ Check whether the parse tree is complete """
+        return len(self.stack) == 0
+
+    def handle_starttag(self, tag, attrs):
+        """ Handle start tags """
+        print(f"Start tag: {tag}")
+        element = ET.Element(tag)
+        for attr in attrs:
+            element.set(attr[0], attr[1])
+        self.stack.append(element)
+    
+    def handle_endtag(self, tag):
+        """ Handle end tags """
+        print(f"End tag: {tag}")
+        try:
+            element = self.stack.pop()
+        except IndexError:
+            raise Exception(f"Unmatched end tag: {tag}")
+        if element.tag != tag:
+            raise Exception(f"Expected end tag {element.tag}, got {tag}")
+        if len(self.stack) == 0:
+            self.tree.append(element)
+        else:
+            self.stack[-1].append(element)
+    
+    def handle_data(self, data):
+        """ Handle data """
+        if len(self.stack) == 0:
+            self.tree.text = data
+        else:
+            self.stack[-1].text = data
+    
+    def handle_startendtag(self, tag, attrs):
+        """ Handle self-closing tags """
+        element = ET.Element(tag)
+        for attr in attrs:
+            element.set(attr[0], attr[1])
+        self.stack[-1].append(element)
+
 
 class ErrorHijacker:
     """
@@ -98,7 +147,7 @@ class ErrorHijacker:
                 raw_lines = f.readlines()
                 cleaned_lines = list(self._clean_lines(raw_lines))
                 code = "".join(cleaned_lines)
-                #print(code)
+                print(code)
             # Now we have the fixed code, we can compile it and execute it
             exec(compile(code, filename, "exec"))
             return
@@ -110,22 +159,61 @@ class ErrorHijacker:
         Replaces (potentially) cursed characters with correct
         python code
         """
-        grab_pattern = re.compile(r"\U00003164*(\U00001438[\w\U00003164]+\U00001433)")
+        grab_pattern = re.compile(r"\U00003164*(\U00001438.+\U00001433)")
+        parser = None
+        prechars = ""
         for line in lines:
-            if self.CHARACTER_MAP.keys() & line:
-                line = grab_pattern.sub(self._replace, line)
-            yield line
+            if self.CHARACTER_MAP.keys() & line and grab_pattern.search(line):
+                content = line[line.find("\U00001438"):]
+                html_content = map_string(content, self.CHARACTER_MAP)
+                print(f"HTML Content: {html_content}")
+                if parser is None:
+                    prechars = line[:line.find("\U00001438")]
+                    parser = Parser()
+                parser.feed(html_content)
+            if parser is None:
+                yield line
+            elif parser.complete:
+                yield prechars + self._build_code(parser.tree)
+                parser = None
+                prechars = ""
     
-    def _replace(self, match):
+    def _build_code(self, element_tree):
         """
-        Replaces cursed characters with parsed HTML
+        Builds a string of python code from an element tree
         """
-        html_string = map_string(match.group(1), self.CHARACTER_MAP)
-        pass
+        xmlstr = ET.tostring(element_tree, encoding="unicode")
+        oneline = xmlstr.replace("\n", "")
+        return f"\"{oneline}\"\n"
+        """
+        if element_tree.tag == "document":
+            return "HTMLBuilder()." + "".join(self._build_code(e) for e in element_tree)
+        code = ""
+        for child in element_tree:
+            code += f"{child.tag}("
+            for attr in child.attrib:
+                code += f"{attr}={child.attrib[attr]},"
+            if child.text is not None:
+                code += f"text=\"{child.text}\""
+            code += ")"
+            code += f".{self._build_code(child)}"
+        return code
+        """
 
+
+class HTMLBuilder:
+    """ Function-chaining HTML builder; this is what the HTML syntax targets """
+
+    def __init__(self):
+        self._tag = None
+        self._text = None
+        self._attrib = {}
+        self._children = []
 
 handler = ErrorHijacker(sys.excepthook)
 sys.excepthook = handler
 
-k = ᐸblahㅤz=33ᐳ
+k = ᐸdivᐳ
+ㅤㅤㅤㅤㅤᐸpᐳSomeㅤTextᐸ𐤕pᐳ
+ᐸ𐤕divᐳ
 print(f"k val: \"{k}\"")
