@@ -3,6 +3,9 @@ import sys
 import traceback
 import pdb
 
+from html.parser import HTMLParser
+import xml.etree.ElementTree as ET
+
 print("Running curse")
 
 """ References
@@ -18,6 +21,8 @@ Open Angle       '<' | \u1438  | "ᐸ"
 Close Angle      '>' | \u1433  | "ᐳ"
 Space            ' ' | \u3164  | "ㅤ"
 Forward Slash    '/' | \u10915 | "𐤕"
+Equals Sign      '=' | \uA60C  | "ꘌ"
+Quote            '"' | \u05F2  | "ײ"
 
 ᐸpᐳ
 ㅤㅤᐸspanᐳHelloㅤWorldᐸ𐤕spanᐳ
@@ -67,6 +72,8 @@ class ErrorHijacker:
         "\U00001433": ">",
         "\U00003164": " ",
         "\U00010915": "/",
+        "\U0000A60C": "=",
+        "\U000005F2": '"',
     })
     
     def __init__(self, native_hook):
@@ -92,7 +99,7 @@ class ErrorHijacker:
                 cleaned_lines = list(self._clean_lines(raw_lines))
                 code = "".join(cleaned_lines)
                 #print(code)
-            # Now we have the code, we can compile it and execute it
+            # Now we have the fixed code, we can compile it and execute it
             exec(compile(code, filename, "exec"))
             return
 
@@ -111,14 +118,14 @@ class ErrorHijacker:
     
     def _replace(self, match):
         """
-        Replaces a match with its inverse, wrapped in a string
+        Replaces cursed characters with parsed HTML
         """
-        #print(match)
-        return f"\"{map_string(match.group(1), self.CHARACTER_MAP)}\""
+        html_string = map_string(match.group(1), self.CHARACTER_MAP)
+        pass
 
 
 handler = ErrorHijacker(sys.excepthook)
 sys.excepthook = handler
 
-k =ᐸblahᐳ
+k = ᐸblahㅤz=33ᐳ
 print(f"k val: \"{k}\"")
