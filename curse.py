@@ -3,8 +3,8 @@ import sys
 import traceback
 import pdb
 
+from types import SimpleNamespace
 from html.parser import HTMLParser
-import xml.etree.ElementTree as ET
 
 print("Running curse")
 
@@ -62,48 +62,98 @@ class Parser(HTMLParser):
 
     def __init__(self):
         super().__init__()
-        self.tree = ET.Element("document")
+        self.code = ""
         self.stack = []
     
     @property
     def complete(self):
         """ Check whether the parse tree is complete """
-        return len(self.stack) == 0
+        return len(self.stack) == 0 and self.code != ""
+    
+    @property
+    def top(self):
+        """ Get the top (latest) element of the stack """
+        return self.stack[-1]
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tags """
-        element = ET.Element(tag)
-        for attr in attrs:
-            element.set(attr[0], attr[1])
-        self.stack.append(element)
+        print(f"Start tag: {tag}, current stack: {self.stack}")
+        self.code += f".tag(\"{tag}\""
+        for aname, aval in attrs:
+            self.code += f", {aname}=\"{aval or True}\""
+        self.stack.append(tag)
+        self.code += ")"
     
     def handle_endtag(self, tag):
         """ Handle end tags """
+        print(f"End tag: {tag}, current stack: {self.stack}")
         try:
-            element = self.stack.pop()
+            prev_tag = self.stack.pop()
+            self.code += ".pop()"
         except IndexError:
             raise Exception(f"Unmatched end tag: {tag}")
-        if element.tag != tag:
-            raise Exception(f"Expected end tag {element.tag}, got {tag}")
-        if len(self.stack) == 0:
-            self.tree.append(element)
-        else:
-            self.stack[-1].append(element)
+        if prev_tag != tag:
+            raise Exception(f"Expected end tag {prev_tag}, got {tag}")
     
     def handle_data(self, data):
         """ Handle data """
-        if len(self.stack) == 0:
-            self.tree.text = data
-        else:
-            self.stack[-1].text = data
+        if data.strip() == "":
+            return
+        self.code += f".text(\"{data.strip()}\")"
     
     def handle_startendtag(self, tag, attrs):
         """ Handle self-closing tags """
-        element = ET.Element(tag)
-        for attr in attrs:
-            element.set(attr[0], attr[1])
-        self.stack[-1].append(element)
+        self.code += f".tag(\"{tag}\""
+        for aname, aval in attrs:
+            self.code += f", {aname}=\"{aval or True}\""
+        self.code += ").pop()"
 
+
+class HTMLBuilder:
+    """ Function-chaining HTML builder; this is what the HTML syntax targets """
+
+    def __init__(self):
+        self._root = None
+        self._stack = []
+    
+    @property
+    def top(self):
+        if len(self._stack) == 0:
+            return None
+        return self._stack[-1]
+    
+    def tag(self, tag_name, *args, **kwargs):
+        tag = SimpleNamespace()
+        tag.args = args
+        tag.kwargs = kwargs
+        tag.name = tag_name
+        tag.children = []
+        if self._root is None:
+            self._root = tag
+        if self.top:
+            tag.parent = self.top
+            self.top.children.append(tag)
+        self._stack.append(tag)
+        return self
+    
+    def text(self, text):
+        self.top.text = text
+        return self
+    
+    def pop(self):
+        return self
+    
+    def _to_dict(self, tag):
+        return {
+            "tag": tag.name,
+            "attrib": tag.kwargs,
+            "text": tag.args[0] if len(tag.args) > 0 else None,
+            "children": [self._to_dict(c) for c in tag.children]
+        }
+    
+    def to_dict(self):
+        return self._to_dict(self._root)
+        
 
 class ErrorHijacker:
     """
@@ -145,7 +195,9 @@ class ErrorHijacker:
                 raw_lines = f.readlines()
                 cleaned_lines = list(self._clean_lines(raw_lines))
                 code = "".join(cleaned_lines)
-                print(code)
+                print("".join([
+                    f"{i+lineno:03d} {l}" for i, l in enumerate(cleaned_lines[lineno-5:])
+                ]))
             # Now we have the fixed code, we can compile it and execute it
             exec(compile(code, filename, "exec"))
             return
@@ -172,7 +224,10 @@ class ErrorHijacker:
             if parser is None:
                 yield line
             elif parser.complete:
-                yield prechars + self._build_code(parser.tree)
+                # pdb.set_trace()
+                code = f"{prechars}HTMLBuilder(){parser.code}\n"
+                print(f"Core code: {code}")
+                yield code
                 parser = None
                 prechars = ""
     
@@ -190,37 +245,6 @@ class ErrorHijacker:
         pattern = re.compile(r"\((.+?)\),")
         return pattern.sub(lambda m: str(eval(m.group(1))), line)
 
-    def _build_code(self, element_tree):
-        """
-        Builds a string of python code from an element tree
-        """
-        xmlstr = ET.tostring(element_tree, encoding="unicode")
-        oneline = xmlstr.replace("\n", "")
-        return f"\"{oneline}\"\n"
-        """
-        if element_tree.tag == "document":
-            return "HTMLBuilder()." + "".join(self._build_code(e) for e in element_tree)
-        code = ""
-        for child in element_tree:
-            code += f"{child.tag}("
-            for attr in child.attrib:
-                code += f"{attr}={child.attrib[attr]},"
-            if child.text is not None:
-                code += f"text=\"{child.text}\""
-            code += ")"
-            code += f".{self._build_code(child)}"
-        return code
-        """
-
-
-class HTMLBuilder:
-    """ Function-chaining HTML builder; this is what the HTML syntax targets """
-
-    def __init__(self):
-        self._tag = None
-        self._text = None
-        self._attrib = {}
-        self._children = []
 
 handler = ErrorHijacker(sys.excepthook)
 sys.excepthook = handler
@@ -229,4 +253,4 @@ g = "Test string!"
 k = ᐸdivᐳ
 ㅤㅤㅤㅤㅤᐸpᐳSomeㅤ(2 + 2),ㅤTextㅤandㅤgㅤisㅤ(g),ᐸ𐤕pᐳ
 ᐸ𐤕divᐳ
-print(f"k val: \"{k}\"")
+print(f"k val: \"{k.to_dict()}\"")
