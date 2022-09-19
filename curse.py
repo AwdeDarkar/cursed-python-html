@@ -3,10 +3,10 @@ import sys
 import traceback
 import pdb
 
-from types import SimpleNamespace
 from html.parser import HTMLParser
 
 from utils import BiDict, map_string, HTMLBuilder
+from tktarget import TkinterTarget
 
 print("Running curse")
 
@@ -50,7 +50,6 @@ class Parser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tags """
-        print(f"Start tag: {tag}, current stack: {self.stack}")
         self.code += f".tag(\"{tag}\""
         for aname, aval in attrs:
             self.code += f", {aname}=\"{aval or True}\""
@@ -59,7 +58,6 @@ class Parser(HTMLParser):
     
     def handle_endtag(self, tag):
         """ Handle end tags """
-        print(f"End tag: {tag}, current stack: {self.stack}")
         try:
             prev_tag = self.stack.pop()
             self.code += ".pop()"
@@ -153,7 +151,6 @@ class ErrorHijacker:
             elif parser.complete:
                 # pdb.set_trace()
                 code = f"{prechars}HTMLBuilder(){parser.code}\n"
-                print(f"Core code: {code}")
                 yield code
                 parser = None
                 prechars = ""
@@ -177,7 +174,8 @@ handler = ErrorHijacker(sys.excepthook)
 sys.excepthook = handler
 
 g = "Test string!"
-k = ᐸdivᐳ
-ㅤㅤㅤㅤㅤᐸpᐳSomeㅤ(2 + 2),ㅤTextㅤandㅤgㅤisㅤ(g),ᐸ𐤕pᐳ
-ᐸ𐤕divᐳ
-print(f"k val: \"{k.to_dict()}\"")
+k = ᐸframeᐳ
+ㅤㅤㅤㅤㅤᐸlabelᐳSomeㅤ(2 + 2),ㅤTextㅤandㅤgㅤisㅤ(g),ᐸ𐤕labelᐳ
+ᐸ𐤕frameᐳ
+# print(f"k val: \"{k.to_dict()}\"")
+TkinterTarget.basic().render(k).start()

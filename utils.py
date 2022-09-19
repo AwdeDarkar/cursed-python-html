@@ -42,6 +42,10 @@ class HTMLBuilder:
             return None
         return self._stack[-1]
     
+    @property
+    def root(self):
+        return self._root
+    
     def tag(self, tag_name, *args, **kwargs):
         tag = SimpleNamespace()
         tag.args = args
@@ -57,7 +61,7 @@ class HTMLBuilder:
         return self
     
     def text(self, text):
-        self.top.text = text
+        self.top.kwargs["text"] = text
         return self
     
     def pop(self):
