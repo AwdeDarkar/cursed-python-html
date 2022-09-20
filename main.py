@@ -22,5 +22,6 @@ class Main(Component):
         ᐸ𐤕frameᐳ
 
 if __name__ == "__main__":
-    hack_guard = ᐸnotag𐤕ᐳ # Prevents the window from running twice
+    # Prevents the window from running twice
+    hack_guard = ᐸnotag𐤕ᐳ
     TkinterTarget.main().start()
