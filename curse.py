@@ -2,6 +2,7 @@ import re
 import sys
 import traceback
 import pdb
+from multiprocessing import Process
 
 from html.parser import HTMLParser
 
@@ -108,9 +109,8 @@ class ErrorHijacker:
 
         if isinstance(value, NameError):
             # Intercept NameError
-            # pdb.set_trace()
 
-            # Extract the dirty file and compile it to an AST
+            # Extract the dirty file and fix the lines
             stack = traceback.extract_tb(trace)
             frame = stack[-1]
             filename = frame.filename
@@ -124,7 +124,11 @@ class ErrorHijacker:
                     f"{i+lineno:03d} {l}" for i, l in enumerate(cleaned_lines[lineno-5:])
                 ]))
             # Now we have the fixed code, we can compile it and execute it
-            exec(compile(code, filename, "exec"))
+            exec(
+                compile(code, filename, "exec"),
+                {**globals(), "__name__": "__main__"},
+                locals(),
+            )
             return
 
         self.native_hook(ex_type, value, trace)
@@ -157,25 +161,24 @@ class ErrorHijacker:
     
     def _eval_expressions(self, line):
         """
-        Evaluates expressions in a line of code in the current
-        namespace
+        Converts expressions to a wrapped function that evaluates to a value
+        in its original context.
 
         Expressions are marked with an open parenthesis, then a python
         expression that evaluates to a string or value, then a close parenthesis
         and a comma.
 
-        Example: `(1 + 1),`
+        Example: `(1 + 1),` -> `lambda: 1 + 1`
         """
         pattern = re.compile(r"\((.+?)\),")
-        return pattern.sub(lambda m: str(eval(m.group(1))), line)
+        # Get a list of all the expressions in the line
+        expressions = pattern.findall(line)
+        for expr in expressions:
+            # Replace the expression with a lambda that evaluates to the expression
+            line = line.replace(f"({expr}),", f"lambda: {expr}")
+        #print(line)
+        return line
 
 
 handler = ErrorHijacker(sys.excepthook)
 sys.excepthook = handler
-
-g = "Test string!"
-k = ᐸframeᐳ
-ㅤㅤㅤㅤㅤᐸlabelᐳSomeㅤ(2 + 2),ㅤTextㅤandㅤgㅤisㅤ(g),ᐸ𐤕labelᐳ
-ᐸ𐤕frameᐳ
-# print(f"k val: \"{k.to_dict()}\"")
-TkinterTarget.basic().render(k).start()

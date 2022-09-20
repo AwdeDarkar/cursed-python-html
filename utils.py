@@ -22,6 +22,35 @@ class BiDict(dict):
         return self._inverse
 
 
+class ImmutableDict(dict):
+    """
+    An immutable and hashable dictionary for state management
+    """
+
+    def __setitem__(self, key, value):
+        raise TypeError("ImmutableDict is immutable")
+
+    def __delitem__(self, key):
+        raise TypeError("ImmutableDict is immutable")
+
+    def __hash__(self):
+        return hash(frozenset(self.items()))
+    
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __repr__(self):
+        return f"ImmutableDict({super().__repr__()})"
+
+    def __str__(self):
+        return f"ImmutableDict({super().__str__()})"
+    
+    def __getattribute__(self, name):
+        if name in self.keys():
+            return self[name]
+        else:
+            return super().__getattribute__(name)
+
 def map_string(string, dict):
     """
     Replace characters in a string according to a mapping dictionary
