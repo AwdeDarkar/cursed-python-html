@@ -121,6 +121,7 @@ class Component:
 
         self.render_root = None
         self.widget = None
+        self.parent_widget = None
     
     def change_props(self, **props):
         """ Change the component's props """
@@ -159,10 +160,8 @@ class Component:
 
     def mount(self, widget):
         """ Mount the component """
-        #print(f"Mounting {self.__class__.__name__} to {widget}")
-        print(f"Render result: {self.render()}")
+        self.parent_widget = widget
         self.render_root = TkinterTarget.component_tree_from_html(self.render())
-        print(f"Rendered {self.render_root}")
         self.render_root.component_will_mount(widget)
         self.widget = self.render_root.mount(widget)
         self.render_root.component_did_mount(widget)
@@ -176,7 +175,15 @@ class Component:
 
     def update(self):
         """ Update the component """
-        pass
+        if self.widget is None:
+            return
+        self.render_root.component_will_unmount()
+        self.render_root = TkinterTarget.component_tree_from_html(self.render())
+        self.widget.destroy()
+        self.render_root.component_will_mount(self.parent_widget)
+        self.widget = self.render_root.mount(self.parent_widget)
+        self.render_root.component_did_mount(self.parent_widget)
+
 
     def render(self) -> HTMLBuilder:
         """ Render the component to an HTMLBuilder """
@@ -213,7 +220,7 @@ class BaseComponent(Component):
 class Frame(BaseComponent):
     """ Frame component """
 
-    def get_widget(self, widget, **kwargs):
+    def get_widget(self, widget):
         """ Mount the component """
         return ttk.Frame(widget, **self.props)
 
@@ -222,6 +229,15 @@ class Frame(BaseComponent):
 class Label(BaseComponent):
     """ Label component """
 
-    def get_widget(self, widget, **kwargs):
+    def get_widget(self, widget):
         """ Mount the component """
         return ttk.Label(widget, **self.props)
+
+
+@TkinterTarget.component
+class Button(BaseComponent):
+    """ Button component """
+
+    def get_widget(self, widget):
+        """ Mount the component """
+        return ttk.Button(widget, **self.props)

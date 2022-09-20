@@ -51,10 +51,11 @@ class Parser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tags """
+        print(f"Start tag: {tag} with attrs {attrs}")
         self.code += f".tag(\"{tag}\""
         self.parameters = []
         for aname, aval in attrs:
-            if "lambda:" in aval:
+            if aval and "lambda:" in aval:
                 self.parameters.append((aname, aval))
             else:
                 self.code += f", {aname}=\"{aval or True}\""

@@ -46,7 +46,7 @@ class ImmutableDict(dict):
         return f"ImmutableDict({super().__str__()})"
     
     def __getattribute__(self, name):
-        if name in self.keys():
+        if name not in ["keys"] and name in self.keys():
             return self[name]
         else:
             return super().__getattribute__(name)
@@ -98,6 +98,7 @@ class HTMLBuilder:
         return self
     
     def pop(self):
+        self._stack.pop()
         return self
     
     def _to_dict(self, tag):
