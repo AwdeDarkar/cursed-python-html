@@ -93,6 +93,10 @@ class HTMLBuilder:
         self.top.kwargs["text"] = text
         return self
     
+    def param(self, name, func):
+        self.top.kwargs[name] = func()
+        return self
+    
     def pop(self):
         return self
     

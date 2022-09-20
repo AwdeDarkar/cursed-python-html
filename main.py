@@ -4,10 +4,9 @@ from tktarget import TkinterTarget, Component
 @TkinterTarget.component
 class Main(Component):
     def render(self, **_):
-        color = "#ff0000"
-        # (color),
+        color = "#00ff00"
         return ᐸframeᐳ
-        ㅤㅤㅤㅤㅤᐸlabelㅤforegroundꘌײredײᐳSomeㅤ(2 + 2),ㅤTextᐸ𐤕labelᐳ
+        ㅤㅤㅤㅤㅤᐸlabelㅤforegroundꘌײ(color),ײᐳSomeㅤ(2 + 2),ㅤTextᐸ𐤕labelᐳ
         ᐸ𐤕frameᐳ
 
 if __name__ == "__main__":

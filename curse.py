@@ -52,10 +52,16 @@ class Parser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         """ Handle start tags """
         self.code += f".tag(\"{tag}\""
+        self.parameters = []
         for aname, aval in attrs:
-            self.code += f", {aname}=\"{aval or True}\""
+            if "lambda:" in aval:
+                self.parameters.append((aname, aval))
+            else:
+                self.code += f", {aname}=\"{aval or True}\""
         self.stack.append(tag)
         self.code += ")"
+        for pname, pfunc in self.parameters:
+            self.code += f".param(\"{pname}\", {pfunc})"
     
     def handle_endtag(self, tag):
         """ Handle end tags """
@@ -71,7 +77,10 @@ class Parser(HTMLParser):
         """ Handle data """
         if data.strip() == "":
             return
-        self.code += f".text(\"{data.strip()}\")"
+        pattern = re.compile(r"\(lambda: (.+?)\)")
+        for match in pattern.finditer(data):
+            data = data.replace(match.group(0), "{" + match.group(1) + "}")
+        self.code += f".text(f\"{data.strip()}\")"
     
     def handle_startendtag(self, tag, attrs):
         """ Handle self-closing tags """
@@ -175,7 +184,7 @@ class ErrorHijacker:
         expressions = pattern.findall(line)
         for expr in expressions:
             # Replace the expression with a lambda that evaluates to the expression
-            line = line.replace(f"({expr}),", f"lambda: {expr}")
+            line = line.replace(f"({expr}),", f"(lambda: {expr})")
         #print(line)
         return line
 
