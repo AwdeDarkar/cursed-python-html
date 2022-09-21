@@ -32,7 +32,6 @@ class TkinterTarget:
     def component_tree_from_html(cls, html: HTMLBuilder):
         """
         Generate a component tree from an HTMLBuilder object.
-        TODO: Implement child components
         """
         return cls.component_from_tag(html.root)
 
@@ -69,7 +68,6 @@ class TkinterTarget:
     
     def mount_to_root(self, component):
         """ Mount a component as the top-level frame of the Tkinter window """
-        print(f"Mounting {component} to {self.root}")
         component.component_will_mount(self.root)
         component.mount(self.root)
         component.component_did_mount(self.root)

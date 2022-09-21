@@ -6,17 +6,17 @@ from multiprocessing import Process
 
 from html.parser import HTMLParser
 
-from utils import BiDict, map_string, HTMLBuilder
+from utils import map_string, HTMLBuilder
 from tktarget import TkinterTarget
 
-print("Running curse")
-
 """ References
-  + <https://github.com/ajalt/fuckitpy>
-  + <https://www.reddit.com/r/rust/comments/5penft/comment/dcsgk7n/>
+  + <https://github.com/ajalt/fuckitpy>; very useful for learning how to get around python's
+    exception handling
+  + <https://www.reddit.com/r/rust/comments/5penft/comment/dcsgk7n/>; some unicode characters
+    look like symbols but are actually letters
   + <
       https://stackoverflow.com/questions/29492895/bare-words-new-keywords-in-python/29492897#29492897
-    >
+    >; this is where I got the `sys.excepthook` trick
 """
 
 """ Cursed Characters Map
@@ -51,7 +51,6 @@ class Parser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tags """
-        print(f"Start tag: {tag} with attrs {attrs}")
         self.code += f".tag(\"{tag}\""
         self.parameters = []
         for aname, aval in attrs:
@@ -100,14 +99,14 @@ class ErrorHijacker:
     syntax and then replacing it with valid Python syntax.
     """
 
-    CHARACTER_MAP = BiDict({
+    CHARACTER_MAP = {
         "\U00001438": "<",
         "\U00001433": ">",
         "\U00003164": " ",
         "\U00010915": "/",
         "\U0000A60C": "=",
         "\U000005F2": '"',
-    })
+    }
     
     def __init__(self, native_hook):
         self.native_hook = native_hook
@@ -130,15 +129,23 @@ class ErrorHijacker:
                 raw_lines = f.readlines()
                 cleaned_lines = list(self._clean_lines(raw_lines))
                 code = "".join(cleaned_lines)
+                """ This is helpful for debugging, it shows the modified source
                 print("".join([
                     f"{i+lineno:03d} {l}" for i, l in enumerate(cleaned_lines[lineno-5:])
                 ]))
+                """
+
             # Now we have the fixed code, we can compile it and execute it
             exec(
                 compile(code, filename, "exec"),
                 {**globals(), "__name__": "__main__"},
                 locals(),
             )
+            # Notice! This means everything before the first instance of
+            # 'cursed' code will be executed twice. This is a limitation
+            # of the current implementation, there may be a workaround
+            # using the context in the traceback, but it's probably not
+            # worth the effort.
             return
 
         self.native_hook(ex_type, value, trace)
@@ -163,7 +170,6 @@ class ErrorHijacker:
             if parser is None:
                 yield line
             elif parser.complete:
-                # pdb.set_trace()
                 code = f"{prechars}HTMLBuilder(){parser.code}\n"
                 yield code
                 parser = None

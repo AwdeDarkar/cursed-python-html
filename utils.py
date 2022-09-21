@@ -1,30 +1,12 @@
 from types import SimpleNamespace
 
-class BiDict(dict):
-    """
-    Bi-directional dictionary
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._inverse = {v: k for k, v in self.items()}
-
-    def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-        self._inverse[value] = key
-    
-    def __delitem__(self, key):
-        super().__delitem__(key)
-        del self._inverse[self[key]]
-    
-    @property
-    def inverse(self):
-        return self._inverse
-
-
 class ImmutableDict(dict):
     """
     An immutable and hashable dictionary for state management
+
+    TODO: Functions are _not_ hashable, but they are allowed
+    for now. This will cause problems for tree comparison,
+    but we could probably wrap them in a string representation.
     """
 
     def __setitem__(self, key, value):
@@ -51,6 +33,7 @@ class ImmutableDict(dict):
         else:
             return super().__getattribute__(name)
 
+
 def map_string(string, dict):
     """
     Replace characters in a string according to a mapping dictionary
@@ -59,7 +42,10 @@ def map_string(string, dict):
 
 
 class HTMLBuilder:
-    """ Function-chaining HTML builder; this is what the HTML syntax targets """
+    """
+    Function-chaining HTML builder.
+    The 'cursed' syntax gets replaced with a chain of HTMLBuilder calls.
+    """
 
     def __init__(self):
         self._root = None
